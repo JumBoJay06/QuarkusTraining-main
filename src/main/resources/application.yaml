@@ -1,0 +1,134 @@
+# Quarkus 框架的主要設定
+quarkus:
+  # HTTP 伺服器相關設定
+  http:
+    # 設定應用程式監聽的 HTTP 連接埠
+    port: 8080
+  rest:
+    auth:
+      challenge-on-auth-failure: false
+  # 應用程式基本資訊設定
+  application:
+    # 應用程式名稱
+    name: youbike-api-java
+    # 應用程式版本
+    version: 1.0.0
+  # REST 客戶端設定
+  rest-client:
+    # 'you-bike-api' 是客戶端介面的設定 ID (對應 @RegisterRestClient 的 configKey)
+    you-bike-api:
+      # API 的目標 URL
+      url: "https://tcgbusfs.blob.core.windows.net/dotapp/youbike/v2/youbike_immediate.json"
+      # 設定此 REST 客戶端的 CDI Bean 範圍為 Singleton (單例)
+      scope: javax.inject.Singleton
+      # 連線逾時時間 (單位：毫秒)
+      connect-timeout: 5000
+      # 讀取逾時時間 (單位：毫秒)
+      read-timeout: 10000
+  # MongoDB 資料庫設定
+  mongodb:
+      # 資料庫連接字串
+#      connection-string: "mongodb://localhost:27017"
+      # 資料庫名稱
+      database: "youbike_db"
+  # Redis 設定
+  redis:
+      # Redis 伺服器的主機名稱
+      host: "redis://localhost:6379"
+  hibernate-orm:
+    # 當設定為 drop-and-create 時，每次 Quarkus 啟動都會清除並重建資料庫結構。
+    # 這在開發初期非常方便，但在生產環境中應改為 'validate' 或 'update'。
+    database:
+      generation: drop-and-create
+    # 在主控台顯示執行的 SQL 語句，方便開發時除錯
+    log:
+      sql: true
+  datasource:
+    db-kind: mysql
+    username: root
+    password: jay12345
+#    jdbc:
+#      url: jdbc:mysql://localhost:9527/user_db?createDatabaseIfNotExist=true
+    devservices:
+      image-name: mysql:8.0
+  # --- Kafka 設定 ---
+  kafka:
+    devservices:
+      image-name: redpandadata/redpanda:latest
+      port: 19093
+  # OpenAPI / Swagger UI 設定
+  smallrye-openapi:
+    path: /openapi
+  swagger-ui:
+    path: /q/swagger-ui
+    always-include: true
+  # 日誌記錄相關設定
+  log:
+    # 全域預設的日誌記錄層級
+    level: INFO
+    # 針對特定類別或套件設定日誌層級
+    category:
+      # 將 'org.jay' 套件下的日誌層級設定為 DEBUG
+      "org.jay":
+        level: DEBUG
+    # 控制台日誌輸出設定
+    console:
+      # 設定日誌輸出的格式
+      # %d{yyyy-MM-dd HH:mm:ss,SSS}: 日期與時間
+      # %-5p: 日誌層級 (例如 INFO, DEBUG)
+      # [%c{1.}]: 類別名稱 (簡寫)
+      # (%t): 執行緒名稱
+      # %s: 日誌訊息
+      # %e: 例外堆疊追蹤
+      # %n: 換行符
+      format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{1.}] (%t) %s%e%n"
+mp:
+  jwt:
+    verify:
+      # 簽發 JWT 的單位名稱，登入 API 產生的 token 中 'iss' 欄位會是這個值
+      issuer: https://myapp.com/issuer
+      # 用於驗證 JWT 簽章的公鑰位置。Quarkus 會從 classpath 中尋找這個檔案。
+      publickey:
+        location: META-INF/resources/publicKey.pem
+  # Kafka Messaging Configuration
+  messaging:
+    # Kafka Producer configuration for station changes
+    outgoing:
+      station-changes-out:
+        connector: smallrye-kafka
+        topic: youbike.station.changes
+
+    # Kafka Consumer configuration for station changes
+    incoming:
+      station-changes-in:
+        connector: smallrye-kafka
+        topic: youbike.station.changes
+        group:
+          id: youbike-change-processor
+        # If deserialization fails, log the error and move to the next message
+        failure-strategy: dead-letter-queue
+# --- SmallRye JWT Configuration ---
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: META-INF/resources/privateKey.pem
+# 自訂的 JWT 產生設定
+app:
+  jwt:
+    duration-in-seconds: 3600 # Token 有效期 (秒)
+# --- Test Profile ---
+# 只有在執行測試時，以下的設定才會生效
+"%test":
+  quarkus:
+    # 覆寫測試時的資料庫種類為 H2 (記憶體資料庫)
+    datasource:
+      db-kind: h2
+      jdbc:
+        # H2 的記憶體模式連線 URL
+        url: jdbc:h2:mem:test_db;DB_CLOSE_DELAY=-1
+    # 覆寫測試時的 Hibernate ORM 設定
+    hibernate-orm:
+      database:
+        # 在測試時，每次都清空並重建資料庫結構
+        generation: drop-and-create
